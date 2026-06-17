@@ -447,14 +447,31 @@ export function buildBot(token: string, opts: BuildBotOptions = {}) {
       await ctx.answerCallbackQuery({
         text: stillDone ? (inserted ? "Done! ✅" : "Already done today ✅") : "Done! ✅",
       });
-      // Refresh the dashboard so the row reflects the new state.
+      // Refresh the dashboard in place. We prefer the stored dashboard
+      // message id (the user might tap a stale ✓ from a previous render);
+      // if that edit fails we fall back to editing the message the button
+      // is on, then to a fresh sendMessage + id update.
       const refreshed = listHabitsByUserId(db, user.id);
+      const text = renderDashboard(user, refreshed, db);
+      const reply_markup = dashboardKeyboard(refreshed);
+      const targetId = user.last_dashboard_message_id;
+      if (targetId != null && ctx.chat) {
+        try {
+          await ctx.api.editMessageText(ctx.chat.id, targetId, text, { reply_markup });
+          return;
+        } catch {
+          // Stored message is gone (deleted, chat cleared, etc.) — fall through.
+        }
+      }
       try {
-        await ctx.editMessageText(renderDashboard(user, refreshed, db), {
-          reply_markup: dashboardKeyboard(refreshed),
-        });
+        await ctx.editMessageText(text, { reply_markup });
+        return;
       } catch {
-        // Best effort.
+        // Same: best effort, then a fresh message.
+      }
+      if (ctx.chat) {
+        const sent = await ctx.reply(text, { reply_markup });
+        setLastDashboardMessageId(db, user.id, sent.message_id);
       }
       return;
     }
