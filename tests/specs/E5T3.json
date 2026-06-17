@@ -1,0 +1,42 @@
+[
+  {
+    "name": "callback from a different user than the chat owner is rejected",
+    "steps": [
+      { "send": { "text": "/start", "userId": 1 }, "expect": [{ "method": "sendMessage" }] },
+      {
+        "send": { "callback": "menu:add", "userId": 2, "messageId": 1 },
+        "expect": [
+          {
+            "method": "answerCallbackQuery",
+            "payload": {
+              "text": "This button isn't for you — please open your own chat with the bot.",
+              "show_alert": true
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "callback from the chat owner is processed normally",
+    "steps": [
+      { "send": { "text": "/start", "userId": 7 }, "expect": [{ "method": "sendMessage" }] },
+      {
+        "send": { "callback": "menu:add", "userId": 7, "messageId": 1 },
+        "expect": [
+          { "method": "answerCallbackQuery" },
+          {
+            "method": "editMessageText",
+            "payload": {
+              "reply_markup": {
+                "inline_keyboard": [
+                  [{ "text": "« Back to menu", "callback_data": "menu:back" }]
+                ]
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+]
