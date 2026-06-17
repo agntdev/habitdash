@@ -1,0 +1,59 @@
+[
+  {
+    "name": "/help sends the command list",
+    "steps": [
+      {
+        "send": { "text": "/help" },
+        "expect": [
+          {
+            "method": "sendMessage",
+            "payload": {
+              "text": "📖 *HabitDash — Commands*\n\n/start — Open the main menu\n/help — Show this help\n/add — Create a new habit\n/list — Show all your habits\n/check — Mark a habit done for today\n/stats — Today's progress + longest streak\n\nJust type one of the commands above to get started."
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "unknown command triggers a friendly fallback",
+    "steps": [
+      {
+        "send": { "text": "/nope" },
+        "expect": [
+          {
+            "method": "sendMessage",
+            "payload": {
+              "text": "Unknown command: /nope\n🤔 That command isn't recognized. Type /help to see the full list of available commands."
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "unknown command surfaces the bad command name so users spot typos",
+    "steps": [
+      {
+        "send": { "text": "/addd extra stuff" },
+        "expect": [
+          {
+            "method": "sendMessage",
+            "payload": {
+              "text": "Unknown command: /addd\n🤔 That command isn't recognized. Type /help to see the full list of available commands."
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "non-command text is ignored (HabitDash is button-driven)",
+    "steps": [
+      {
+        "send": { "text": "hello there" },
+        "expect": []
+      }
+    ]
+  }
+]
