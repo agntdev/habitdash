@@ -8,7 +8,7 @@
           {
             "method": "sendMessage",
             "payload": {
-              "text": "📖 *HabitDash — Commands*\n\n/start — Open the main menu\n/help — Show this help\n/add — Create a new habit\n/list — Show all your habits\n/check — Mark a habit done for today\n/stats — Today's progress + longest streak\n\nJust type one of the commands above to get started."
+              "text": "📖 *HabitDash — Commands*\n\n/start — Open the dashboard\n/help — Show this help\n/add — Create a new habit\n/list — Show all your habits\n/check — Mark a habit done for today\n/stats — Today's progress + longest streak\n\nJust type one of the commands above to get started."
             }
           }
         ]

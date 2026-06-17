@@ -30,7 +30,7 @@
             "payload": {
               "reply_markup": {
                 "inline_keyboard": [
-                  [{ "text": "« Back to menu", "callback_data": "menu:back" }]
+                  [{ "text": "« Back to dashboard", "callback_data": "menu:back" }]
                 ]
               }
             }
