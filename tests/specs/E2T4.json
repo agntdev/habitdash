@@ -38,7 +38,7 @@
           {
             "method": "sendMessage",
             "payload": {
-              "text": "✅ Reminder: *none*.\n\nStep 4 of 4 — ready to confirm. The [Confirm] / [Cancel] step lands in E2T5."
+              "text": "✅ Reminder: *none*.\n\nStep 4 of 4 — confirm?"
             }
           }
         ]
@@ -60,7 +60,7 @@
           {
             "method": "sendMessage",
             "payload": {
-              "text": "✅ Reminder: *12:00*.\n\nStep 4 of 4 — ready to confirm. The [Confirm] / [Cancel] step lands in E2T5."
+              "text": "✅ Reminder: *12:00*.\n\nStep 4 of 4 — confirm?"
             }
           }
         ]
@@ -82,7 +82,7 @@
           {
             "method": "sendMessage",
             "payload": {
-              "text": "✅ Reminder: *07:30*.\n\nStep 4 of 4 — ready to confirm. The [Confirm] / [Cancel] step lands in E2T5."
+              "text": "✅ Reminder: *07:30*.\n\nStep 4 of 4 — confirm?"
             }
           }
         ]

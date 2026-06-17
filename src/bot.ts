@@ -75,6 +75,9 @@ const CB = {
   /** E2T4 quick time. `time:<HH:MM>`. */
   TIME: "time",
   REMIND_CUSTOM: "remind:custom",
+  /** E2T5 confirm/cancel. */
+  CONFIRM: "confirm:yes",
+  CANCEL: "confirm:no",
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -234,6 +237,13 @@ function quickTimePicker() {
   return inlineKeyboard([
     [inlineButton("08:00", `${CB.TIME}:08:00`), inlineButton("12:00", `${CB.TIME}:12:00`)],
     [inlineButton("18:00", `${CB.TIME}:18:00`), inlineButton("Custom…", CB.REMIND_CUSTOM)],
+  ]);
+}
+
+/** E2T5: [Confirm] [Cancel] for the final habit-creation step. */
+function confirmCancel() {
+  return inlineKeyboard([
+    [inlineButton("✅ Confirm", CB.CONFIRM), inlineButton("❌ Cancel", CB.CANCEL)],
   ]);
 }
 
@@ -512,16 +522,70 @@ export function buildBot(token: string, opts: BuildBotOptions = {}) {
       );
       return;
     }
+    // E2T5: confirm or cancel the in-flight /add draft.
+    if (data === CB.CONFIRM) {
+      const draft = ctx.session.draft;
+      if (!draft?.name || !draft.frequencyType) {
+        await ctx.answerCallbackQuery({ text: "No draft to confirm." });
+        return;
+      }
+      if (!db || !ctx.session.user) {
+        await ctx.answerCallbackQuery({ text: "DB not wired." });
+        return;
+      }
+      const habit = createHabit(db, ctx.session.user.id, draft.name, {
+        frequencyType: draft.frequencyType,
+        frequencyDays: draft.frequencyDays,
+        reminderTime: draft.reminderTime ?? null,
+      });
+      ctx.session.addStep = undefined;
+      ctx.session.draft = undefined;
+      await ctx.answerCallbackQuery({ text: "Created!" });
+      const habits = listHabitsByUserId(db, ctx.session.user.id);
+      const sent = await ctx.reply(
+        `🎉 Habit *${habit.name}* created! Returning to your dashboard.`,
+      );
+      // Refresh the dashboard in place.
+      const lastId = ctx.session.user.last_dashboard_message_id;
+      if (lastId != null && ctx.chat) {
+        try {
+          await ctx.api.editMessageText(
+            ctx.chat.id,
+            lastId,
+            renderDashboard(ctx.session.user, habits, db),
+            { reply_markup: dashboardKeyboard(habits) },
+          );
+          return;
+        } catch {
+          // Fall through.
+        }
+      }
+      if (ctx.chat) {
+        const fresh = await ctx.reply(
+          renderDashboard(ctx.session.user, habits, db),
+          { reply_markup: dashboardKeyboard(habits) },
+        );
+        setLastDashboardMessageId(db, ctx.session.user.id, fresh.message_id);
+      }
+      void sent;
+      return;
+    }
+    if (data === CB.CANCEL) {
+      ctx.session.addStep = undefined;
+      ctx.session.draft = undefined;
+      await ctx.answerCallbackQuery({ text: "Cancelled." });
+      await ctx.reply("🗑 Habit creation cancelled. Back to the dashboard.");
+      return;
+    }
+
     // E2T4: reminder decision + quick time / custom.
     if (data === CB.REMIND_NO) {
       ctx.session.draft = { ...(ctx.session.draft ?? {}), reminderTime: undefined };
       ctx.session.addStep = "awaiting_confirm";
       await ctx.answerCallbackQuery();
-      await ctx.reply(
-        "✅ Reminder: *none*.\n\n" +
-          "Step 4 of 4 — ready to confirm. " +
-          "The [Confirm] / [Cancel] step lands in E2T5.",
-      );
+      await ctx.reply("✅ Reminder: *none*.\n\nStep 4 of 4 — confirm?", {
+        reply_markup: confirmCancel(),
+      });
       return;
     }
     if (data === CB.REMIND_SET) {
@@ -550,11 +614,9 @@ export function buildBot(token: string, opts: BuildBotOptions = {}) {
       ctx.session.draft = { ...(ctx.session.draft ?? {}), reminderTime: t };
       ctx.session.addStep = "awaiting_confirm";
       await ctx.answerCallbackQuery();
-      await ctx.reply(
-        `✅ Reminder: *${t}*.\n\n` +
-          "Step 4 of 4 — ready to confirm. " +
-          "The [Confirm] / [Cancel] step lands in E2T5.",
-      );
+      await ctx.reply(`✅ Reminder: *${t}*.\n\nStep 4 of 4 — confirm?`, {
+        reply_markup: confirmCancel(),
+      });
       return;
     }
     if (data.startsWith(`${CB.DAY}:`)) {
@@ -621,11 +683,9 @@ export function buildBot(token: string, opts: BuildBotOptions = {}) {
         const t = text.trim();
         ctx.session.draft = { ...(ctx.session.draft ?? {}), reminderTime: t };
         ctx.session.addStep = "awaiting_confirm";
-        await ctx.reply(
-          `✅ Reminder: *${t}*.\n\n` +
-            "Step 4 of 4 — ready to confirm. " +
-            "The [Confirm] / [Cancel] step lands in E2T5.",
-        );
+        await ctx.reply(`✅ Reminder: *${t}*.\n\nStep 4 of 4 — confirm?`, {
+          reply_markup: confirmCancel(),
+        });
       } else {
         await ctx.reply(
           "⏰ That doesn't look like HH:MM. Try again (e.g. `07:30`, `21:15`).",

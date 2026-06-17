@@ -1,0 +1,71 @@
+[
+  {
+    "name": "Confirm creates the habit and the next /start shows it on the dashboard",
+    "steps": [
+      { "send": { "text": "/start", "userId": 1, "chatId": 100 }, "expect": [{ "method": "sendMessage" }] },
+      { "send": { "text": "/add", "userId": 1, "chatId": 100 }, "expect": [{ "method": "sendMessage" }] },
+      { "send": { "text": "Read 10 pages", "userId": 1, "chatId": 100 }, "expect": [{ "method": "sendMessage" }] },
+      { "send": { "callback": "freq:daily", "userId": 1, "chatId": 100, "messageId": 1 }, "expect": [{ "method": "answerCallbackQuery" }, { "method": "sendMessage" }] },
+      { "send": { "callback": "remind:no", "userId": 1, "chatId": 100, "messageId": 1 }, "expect": [{ "method": "answerCallbackQuery" }, { "method": "sendMessage" }] },
+      {
+        "send": { "callback": "confirm:yes", "userId": 1, "chatId": 100, "messageId": 1 },
+        "expect": [
+          { "method": "answerCallbackQuery" },
+          { "method": "sendMessage" }
+        ]
+      },
+      {
+        "send": { "text": "/start", "userId": 1, "chatId": 100 },
+        "expect": [
+          {
+            "method": "sendMessage",
+            "payload": {
+              "text": "📊 *Your habits*\n\n1. *Read 10 pages* — streak: 0",
+              "reply_markup": {
+                "inline_keyboard": [
+                  [{ "text": "✓ Read 10 pages", "callback_data": "done:1" }],
+                  [
+                    { "text": "➕ Add", "callback_data": "dash:add" },
+                    { "text": "📊 Stats", "callback_data": "dash:stats" },
+                    { "text": "📋 List", "callback_data": "dash:list" }
+                  ]
+                ]
+              }
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Cancel clears the draft and no habit is created",
+    "steps": [
+      { "send": { "text": "/start", "userId": 2, "chatId": 200 }, "expect": [{ "method": "sendMessage" }] },
+      { "send": { "text": "/add", "userId": 2, "chatId": 200 }, "expect": [{ "method": "sendMessage" }] },
+      { "send": { "text": "Cancelled habit", "userId": 2, "chatId": 200 }, "expect": [{ "method": "sendMessage" }] },
+      { "send": { "callback": "freq:daily", "userId": 2, "chatId": 200, "messageId": 1 }, "expect": [{ "method": "answerCallbackQuery" }, { "method": "sendMessage" }] },
+      { "send": { "callback": "remind:no", "userId": 2, "chatId": 200, "messageId": 1 }, "expect": [{ "method": "answerCallbackQuery" }, { "method": "sendMessage" }] },
+      {
+        "send": { "callback": "confirm:no", "userId": 2, "chatId": 200, "messageId": 1 },
+        "expect": [
+          {
+            "method": "answerCallbackQuery",
+            "payload": { "text": "Cancelled." }
+          },
+          { "method": "sendMessage" }
+        ]
+      },
+      {
+        "send": { "text": "/start", "userId": 2, "chatId": 200 },
+        "expect": [
+          {
+            "method": "sendMessage",
+            "payload": {
+              "text": "📊 *Your habits*\n\n🌱 _No habits yet — tap ➕ below to add your first one._"
+            }
+          }
+        ]
+      }
+    ]
+  }
+]
