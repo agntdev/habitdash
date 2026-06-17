@@ -1,0 +1,114 @@
+[
+  {
+    "name": "after frequency the reminder decision shows [No reminder] [Set time]",
+    "steps": [
+      { "send": { "text": "/start", "userId": 1, "chatId": 100 }, "expect": [{ "method": "sendMessage" }] },
+      { "send": { "text": "/add", "userId": 1, "chatId": 100 }, "expect": [{ "method": "sendMessage" }] },
+      { "send": { "text": "Read", "userId": 1, "chatId": 100 }, "expect": [{ "method": "sendMessage" }] },
+      {
+        "send": { "callback": "freq:daily", "userId": 1, "chatId": 100, "messageId": 1 },
+        "expect": [
+          { "method": "answerCallbackQuery" },
+          {
+            "method": "sendMessage",
+            "payload": {
+              "reply_markup": {
+                "inline_keyboard": [
+                  [{ "text": "No reminder", "callback_data": "remind:no" }],
+                  [{ "text": "Set time ⏰", "callback_data": "remind:set" }]
+                ]
+              }
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "tapping No reminder sets the time to null and advances to confirm",
+    "steps": [
+      { "send": { "text": "/start", "userId": 2, "chatId": 200 }, "expect": [{ "method": "sendMessage" }] },
+      { "send": { "text": "/add", "userId": 2, "chatId": 200 }, "expect": [{ "method": "sendMessage" }] },
+      { "send": { "text": "Read", "userId": 2, "chatId": 200 }, "expect": [{ "method": "sendMessage" }] },
+      { "send": { "callback": "freq:daily", "userId": 2, "chatId": 200, "messageId": 1 }, "expect": [{ "method": "answerCallbackQuery" }, { "method": "sendMessage" }] },
+      {
+        "send": { "callback": "remind:no", "userId": 2, "chatId": 200, "messageId": 1 },
+        "expect": [
+          { "method": "answerCallbackQuery" },
+          {
+            "method": "sendMessage",
+            "payload": {
+              "text": "✅ Reminder: *none*.\n\nStep 4 of 4 — ready to confirm. The [Confirm] / [Cancel] step lands in E2T5."
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Set time then 12:00 advances to confirm",
+    "steps": [
+      { "send": { "text": "/start", "userId": 3, "chatId": 300 }, "expect": [{ "method": "sendMessage" }] },
+      { "send": { "text": "/add", "userId": 3, "chatId": 300 }, "expect": [{ "method": "sendMessage" }] },
+      { "send": { "text": "Read", "userId": 3, "chatId": 300 }, "expect": [{ "method": "sendMessage" }] },
+      { "send": { "callback": "freq:daily", "userId": 3, "chatId": 300, "messageId": 1 }, "expect": [{ "method": "answerCallbackQuery" }, { "method": "sendMessage" }] },
+      { "send": { "callback": "remind:set", "userId": 3, "chatId": 300, "messageId": 1 }, "expect": [{ "method": "answerCallbackQuery" }, { "method": "sendMessage" }] },
+      {
+        "send": { "callback": "time:12:00", "userId": 3, "chatId": 300, "messageId": 1 },
+        "expect": [
+          { "method": "answerCallbackQuery" },
+          {
+            "method": "sendMessage",
+            "payload": {
+              "text": "✅ Reminder: *12:00*.\n\nStep 4 of 4 — ready to confirm. The [Confirm] / [Cancel] step lands in E2T5."
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Custom then typed 07:30 advances to confirm",
+    "steps": [
+      { "send": { "text": "/start", "userId": 4, "chatId": 400 }, "expect": [{ "method": "sendMessage" }] },
+      { "send": { "text": "/add", "userId": 4, "chatId": 400 }, "expect": [{ "method": "sendMessage" }] },
+      { "send": { "text": "Read", "userId": 4, "chatId": 400 }, "expect": [{ "method": "sendMessage" }] },
+      { "send": { "callback": "freq:daily", "userId": 4, "chatId": 400, "messageId": 1 }, "expect": [{ "method": "answerCallbackQuery" }, { "method": "sendMessage" }] },
+      { "send": { "callback": "remind:set", "userId": 4, "chatId": 400, "messageId": 1 }, "expect": [{ "method": "answerCallbackQuery" }, { "method": "sendMessage" }] },
+      { "send": { "callback": "remind:custom", "userId": 4, "chatId": 400, "messageId": 1 }, "expect": [{ "method": "answerCallbackQuery" }, { "method": "sendMessage" }] },
+      {
+        "send": { "text": "07:30", "userId": 4, "chatId": 400 },
+        "expect": [
+          {
+            "method": "sendMessage",
+            "payload": {
+              "text": "✅ Reminder: *07:30*.\n\nStep 4 of 4 — ready to confirm. The [Confirm] / [Cancel] step lands in E2T5."
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Custom then a malformed time is rejected with a re-prompt",
+    "steps": [
+      { "send": { "text": "/start", "userId": 5, "chatId": 500 }, "expect": [{ "method": "sendMessage" }] },
+      { "send": { "text": "/add", "userId": 5, "chatId": 500 }, "expect": [{ "method": "sendMessage" }] },
+      { "send": { "text": "Read", "userId": 5, "chatId": 500 }, "expect": [{ "method": "sendMessage" }] },
+      { "send": { "callback": "freq:daily", "userId": 5, "chatId": 500, "messageId": 1 }, "expect": [{ "method": "answerCallbackQuery" }, { "method": "sendMessage" }] },
+      { "send": { "callback": "remind:set", "userId": 5, "chatId": 500, "messageId": 1 }, "expect": [{ "method": "answerCallbackQuery" }, { "method": "sendMessage" }] },
+      { "send": { "callback": "remind:custom", "userId": 5, "chatId": 500, "messageId": 1 }, "expect": [{ "method": "answerCallbackQuery" }, { "method": "sendMessage" }] },
+      {
+        "send": { "text": "25:99", "userId": 5, "chatId": 500 },
+        "expect": [
+          {
+            "method": "sendMessage",
+            "payload": {
+              "text": "⏰ That doesn't look like HH:MM. Try again (e.g. `07:30`, `21:15`)."
+            }
+          }
+        ]
+      }
+    ]
+  }
+]
