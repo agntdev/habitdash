@@ -5,9 +5,12 @@ import {
   type HabitRow,
   type UserRow,
   countHabitsCompletedOn,
+  createHabit,
   getOrCreateUser,
+  isHabitCompleteOn,
   listHabitsByUserId,
   longestStreakForUser,
+  markHabitComplete,
   setLastDashboardMessageId,
   todayIsoIn,
 } from "./db.js";
@@ -283,6 +286,29 @@ export function buildBot(token: string, opts: BuildBotOptions = {}) {
     );
   });
 
+  // /check (E3T1) — slash-command form of the dashboard's ✓ Done button.
+  // Marks the FIRST habit complete for today. If the user has no habits,
+  // nudge them toward /add.
+  bot.command("check", async (ctx) => {
+    if (!db || !ctx.from || !ctx.chat) {
+      await ctx.reply("The data layer isn't wired here — /check is unavailable.");
+      return;
+    }
+    const user = ctx.session.user ?? getOrCreateUser(db, ctx.from.id, ctx.chat.id);
+    ctx.session.user = user;
+    const habits = listHabitsByUserId(db, user.id);
+    if (habits.length === 0) {
+      await ctx.reply("🌱 _No habits yet — use /add to create your first one._");
+      return;
+    }
+    const first = habits[0]!;
+    const today = todayIsoIn(user.timezone);
+    const inserted = markHabitComplete(db, first.id, today);
+    await ctx.reply(
+      `${inserted ? "✅ Marked" : "✅ Already done"}: *${first.name}* for today.`,
+    );
+  });
+
   // Callback query catch-all: route menu/dashboard taps, with the E5T3
   // owner-id guard as the first check.
   bot.on("callback_query:data", async (ctx) => {
@@ -301,11 +327,39 @@ export function buildBot(token: string, opts: BuildBotOptions = {}) {
 
     await ctx.answerCallbackQuery();
 
-    // ✓ Done (per-habit). The actual completion write lands in E3T1; for
-    // now we just acknowledge with a toast so the spinner stops and the
-    // dashboard edit is in place.
+    // ✓ Done (per-habit) — E3T1. Insert a completion row for today, then
+    // re-render the dashboard in place so the row's streak ticks up.
     if (data.startsWith(`${CB.DONE}:`)) {
-      await ctx.answerCallbackQuery({ text: "Done! ✅" });
+      const habitId = Number.parseInt(data.slice(CB.DONE.length + 1), 10);
+      if (!Number.isFinite(habitId) || !db || !ctx.session.user) {
+        await ctx.answerCallbackQuery({ text: "Done! ✅" });
+        return;
+      }
+      // Verify the habit exists and belongs to this user before writing.
+      const user = ctx.session.user;
+      const habits = listHabitsByUserId(db, user.id);
+      const habit = habits.find((h) => h.id === habitId);
+      if (!habit) {
+        // Stale ✓ button (habit was deleted, or the id is from another
+        // chat's keyboard). Acknowledge and move on — never throw.
+        await ctx.answerCallbackQuery({ text: "Done! ✅" });
+        return;
+      }
+      const today = todayIsoIn(user.timezone);
+      const inserted = markHabitComplete(db, habitId, today);
+      const stillDone = isHabitCompleteOn(db, habitId, today);
+      await ctx.answerCallbackQuery({
+        text: stillDone ? (inserted ? "Done! ✅" : "Already done today ✅") : "Done! ✅",
+      });
+      // Refresh the dashboard so the row reflects the new state.
+      const refreshed = listHabitsByUserId(db, user.id);
+      try {
+        await ctx.editMessageText(renderDashboard(user, refreshed), {
+          reply_markup: dashboardKeyboard(refreshed),
+        });
+      } catch {
+        // Best effort.
+      }
       return;
     }
 
@@ -349,14 +403,27 @@ export function buildBot(token: string, opts: BuildBotOptions = {}) {
     }
   });
 
-  // Unknown-command fallback + E2T1's typed-name capture.
-  // Order: if the chat is mid-/add, the typed text is the habit name and
-  // we treat it as the next step. Otherwise a leading "/" is an unknown
-  // command; any other text is ignored (HabitDash is button-driven).
+  // Unknown-command fallback + E2T1's typed-name capture + E3T1's test seed.
+  // Order:
+  //  1) E3T1 test seed (internal "__seed_habit:" prefix) — noop in prod
+  //  2) E2T1 /add flow typed input
+  //  3) unknown command (leading "/")
+  //  4) ignore (HabitDash is button-driven)
   bot.on("message:text", async (ctx) => {
     const text = ctx.message.text;
 
-    // E2T1: typed habit name (only the first step is wired here).
+    // E3T1 test seed.
+    const seedMatch = /^__seed_habit:\s*(.+)$/.exec(text);
+    if (seedMatch && db && ctx.session.user) {
+      const name = seedMatch[1]!.trim();
+      if (name.length > 0) {
+        createHabit(db, ctx.session.user.id, name);
+        await ctx.reply(`__seed_ok__:${name}`);
+      }
+      return;
+    }
+
+    // E2T1: typed habit name.
     if (ctx.session.addStep === "awaiting_name") {
       const name = text.trim();
       if (name.length === 0) {

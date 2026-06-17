@@ -294,3 +294,49 @@ function isNextDay(prev: string, cur: string): boolean {
   );
   return (b - a) / 86_400_000 === 1;
 }
+
+/** Create a habit for the user. Frequency defaults to 'daily'. */
+export function createHabit(
+  db: DatabaseType,
+  userId: number,
+  name: string,
+  opts?: { frequencyType?: "daily" | "weekdays" | "specific_days"; frequencyDays?: number; reminderTime?: string | null },
+): HabitRow {
+  const freq = opts?.frequencyType ?? "daily";
+  const info = db
+    .prepare(
+      "INSERT INTO habits (user_id, name, frequency_type, frequency_days, reminder_time) VALUES (?, ?, ?, ?, ?)",
+    )
+    .run(userId, name, freq, opts?.frequencyDays ?? null, opts?.reminderTime ?? null);
+  return db
+    .prepare<[number | bigint], HabitRow>("SELECT * FROM habits WHERE id = ?")
+    .get(info.lastInsertRowid) as HabitRow;
+}
+
+/** Insert a completion row for the (habit, date) pair, idempotent. */
+export function markHabitComplete(
+  db: DatabaseType,
+  habitId: number,
+  dateIso: string,
+): boolean {
+  // INSERT OR IGNORE — the unique(habit_id, date) index makes a second tap a
+  // no-op. Returns true on the first insert, false on a duplicate.
+  const info = db
+    .prepare("INSERT OR IGNORE INTO completions (habit_id, date) VALUES (?, ?)")
+    .run(habitId, dateIso);
+  return info.changes === 1;
+}
+
+/** True iff the habit has a completion row for `dateIso`. */
+export function isHabitCompleteOn(
+  db: DatabaseType,
+  habitId: number,
+  dateIso: string,
+): boolean {
+  const row = db
+    .prepare<[number, string], { n: number }>(
+      "SELECT COUNT(*) AS n FROM completions WHERE habit_id = ? AND date = ?",
+    )
+    .get(habitId, dateIso);
+  return (row?.n ?? 0) > 0;
+}
