@@ -6,6 +6,7 @@ import {
   type UserRow,
   countHabitsCompletedOn,
   createHabit,
+  currentStreakForHabit,
   getOrCreateUser,
   isHabitCompleteOn,
   listHabitsByUserId,
@@ -77,7 +78,7 @@ const HELP_TEXT =
   "/start — Open the dashboard\n" +
   "/help — Show this help\n" +
   "/add — Create a new habit\n" +
-  "/list — Show all your habits\n" +
+  "/list — Refresh the dashboard\n" +
   "/check — Mark a habit done for today\n" +
   "/stats — Today's progress + longest streak\n\n" +
   "Just type one of the commands above to get started.";
@@ -140,7 +141,11 @@ export interface BuildBotOptions {
 // ---------------------------------------------------------------------------
 
 /** Render the dashboard text. Reads the user's habits (or shows empty state). */
-function renderDashboard(_user: UserRow | null, habits: readonly HabitRow[]): string {
+function renderDashboard(
+  user: UserRow | null,
+  habits: readonly HabitRow[],
+  dbHandle: DatabaseType | null,
+): string {
   if (habits.length === 0) {
     return [
       "📊 *Your habits*",
@@ -150,9 +155,8 @@ function renderDashboard(_user: UserRow | null, habits: readonly HabitRow[]): st
   }
 
   const lines = habits.map((h, i) => {
-    // Streak computation is owned by E3T1 (which writes completions). Until
-    // that lands we render "—" so the row layout is correct end-to-end.
-    const streak = "—";
+    const today = todayIsoIn(user?.timezone ?? null);
+    const streak = dbHandle ? currentStreakForHabit(dbHandle, h, today) : 0;
     return `${i + 1}. *${h.name}* — streak: ${streak}`;
   });
 
@@ -227,7 +231,7 @@ export function buildBot(token: string, opts: BuildBotOptions = {}) {
       const user = getOrCreateUser(db, ctx.from.id, ctx.chat.id);
       ctx.session.user = user;
       const habits = listHabitsByUserId(db, user.id);
-      const sent = await ctx.reply(renderDashboard(user, habits), {
+      const sent = await ctx.reply(renderDashboard(user, habits, db), {
         reply_markup: dashboardKeyboard(habits),
       });
       setLastDashboardMessageId(db, user.id, sent.message_id);
@@ -284,6 +288,33 @@ export function buildBot(token: string, opts: BuildBotOptions = {}) {
       `📊 *Stats*\n\n${body}\n🔥 _Longest streak (any habit): ${longest} day${longest === 1 ? "" : "s"}_`,
       { reply_markup: backToDashboard() },
     );
+  });
+
+  // /list (E1T2) — re-render the dashboard. If we have a stored dashboard
+  // message id, edit it in place; otherwise send a fresh message. This is
+  // the "dashboard refresh" hook: it shows the up-to-date streak / ✓ state
+  // without leaving the chat.
+  bot.command("list", async (ctx) => {
+    if (!db || !ctx.from || !ctx.chat) {
+      await ctx.reply("/list is unavailable without a data layer.");
+      return;
+    }
+    const user = ctx.session.user ?? getOrCreateUser(db, ctx.from.id, ctx.chat.id);
+    ctx.session.user = user;
+    const habits = listHabitsByUserId(db, user.id);
+    const text = renderDashboard(user, habits, db);
+    const reply_markup = dashboardKeyboard(habits);
+    const lastId = user.last_dashboard_message_id;
+    if (lastId != null) {
+      try {
+        await ctx.api.editMessageText(ctx.chat.id, lastId, text, { reply_markup });
+        return;
+      } catch {
+        // Fall through to a fresh sendMessage.
+      }
+    }
+    const sent = await ctx.reply(text, { reply_markup });
+    setLastDashboardMessageId(db, user.id, sent.message_id);
   });
 
   // /check (E3T1) — slash-command form of the dashboard's ✓ Done button.
@@ -354,7 +385,7 @@ export function buildBot(token: string, opts: BuildBotOptions = {}) {
       // Refresh the dashboard so the row reflects the new state.
       const refreshed = listHabitsByUserId(db, user.id);
       try {
-        await ctx.editMessageText(renderDashboard(user, refreshed), {
+        await ctx.editMessageText(renderDashboard(user, refreshed, db), {
           reply_markup: dashboardKeyboard(refreshed),
         });
       } catch {
@@ -369,7 +400,7 @@ export function buildBot(token: string, opts: BuildBotOptions = {}) {
       const user = ctx.session.user ?? null;
       const habits = user && db ? listHabitsByUserId(db, user.id) : [];
       const text = user
-        ? renderDashboard(user, habits)
+        ? renderDashboard(user, habits, db)
         : WELCOME;
       const keyboard = user
         ? dashboardKeyboard(habits)

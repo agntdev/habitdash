@@ -340,3 +340,58 @@ export function isHabitCompleteOn(
     .get(habitId, dateIso);
   return (row?.n ?? 0) > 0;
 }
+
+/** Current streak for one habit, counting back from `today` (inclusive).
+ *  Honors the habit's frequency: a 'daily' habit requires a completion every
+ *  day; 'weekdays' skips Sat/Sun; 'specific_days' only requires completions
+ *  on the weekdays the bitmask enables (0=Sun..6=Sat). A day that should
+ *  have a completion but doesn't ends the streak at 0. */
+export function currentStreakForHabit(
+  db: DatabaseType,
+  habit: HabitRow,
+  today: string,
+): number {
+  let streak = 0;
+  let cur = today;
+  // Walk backwards day-by-day. Capped at 365 to bound the loop on a
+  // pathological DB (and matches the docs' "365-day window" cap).
+  for (let i = 0; i < 365; i++) {
+    if (!isRequiredDay(habit, cur)) {
+      // Not a required day — keep walking.
+      cur = previousDay(cur);
+      continue;
+    }
+    if (!isHabitCompleteOn(db, habit.id, cur)) {
+      break;
+    }
+    streak += 1;
+    cur = previousDay(cur);
+  }
+  return streak;
+}
+
+function isRequiredDay(habit: HabitRow, dateIso: string): boolean {
+  const dow = dayOfWeek(dateIso);
+  switch (habit.frequency_type) {
+    case "daily":
+      return true;
+    case "weekdays":
+      return dow >= 1 && dow <= 5;
+    case "specific_days":
+      return ((habit.frequency_days ?? 0) & (1 << dow)) !== 0;
+    default:
+      return true;
+  }
+}
+
+function dayOfWeek(dateIso: string): number {
+  // 0=Sun..6=Sat — Date.getUTCDay() uses this same ordering.
+  const d = new Date(dateIso + "T00:00:00Z");
+  return d.getUTCDay();
+}
+
+function previousDay(dateIso: string): string {
+  const d = new Date(dateIso + "T00:00:00Z");
+  d.setUTCDate(d.getUTCDate() - 1);
+  return d.toISOString().slice(0, 10);
+}
