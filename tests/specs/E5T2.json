@@ -1,0 +1,59 @@
+[
+  {
+    "name": "the first /start stores the dashboard message id and a later ✓ Done edits it in place",
+    "steps": [
+      {
+        "send": { "text": "/start", "userId": 1, "chatId": 100 },
+        "expect": [{ "method": "sendMessage" }]
+      },
+      { "send": { "text": "__seed_habit: Read 10 pages", "userId": 1, "chatId": 100 }, "expect": [{ "method": "sendMessage" }] },
+      { "send": { "text": "/start", "userId": 1, "chatId": 100 }, "expect": [{ "method": "sendMessage" }] },
+      {
+        "send": { "callback": "done:1", "userId": 1, "chatId": 100, "messageId": 1 },
+        "expect": [
+          { "method": "answerCallbackQuery" },
+          { "method": "editMessageText" }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "/list with a stored dashboard id edits in place (no new message)",
+    "steps": [
+      {
+        "send": { "text": "/start", "userId": 2, "chatId": 200 },
+        "expect": [{ "method": "sendMessage" }]
+      },
+      { "send": { "text": "__seed_habit: Stretch", "userId": 2, "chatId": 200 }, "expect": [{ "method": "sendMessage" }] },
+      { "send": { "text": "/start", "userId": 2, "chatId": 200 }, "expect": [{ "method": "sendMessage" }] },
+      {
+        "send": { "text": "/list", "userId": 2, "chatId": 200 },
+        "expect": [
+          {
+            "method": "editMessageText",
+            "payload": {
+              "text": "📊 *Your habits*\n\n1. *Stretch* — streak: 0"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "/list for a brand-new user falls back to a fresh sendMessage (no stored id)",
+    "steps": [
+      { "send": { "text": "/start", "userId": 3, "chatId": 300 }, "expect": [{ "method": "sendMessage" }] },
+      {
+        "send": { "text": "/list", "userId": 3, "chatId": 300 },
+        "expect": [
+          {
+            "method": "sendMessage",
+            "payload": {
+              "text": "📊 *Your habits*\n\n🌱 _No habits yet — tap ➕ below to add your first one._"
+            }
+          }
+        ]
+      }
+    ]
+  }
+]
