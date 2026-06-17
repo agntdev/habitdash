@@ -104,7 +104,12 @@
           {
             "method": "sendMessage",
             "payload": {
-              "text": "✅ Days: Mon, Wed.\n\nStep 3 of 4 — pick a reminder time. The [No reminder] / [Set time] picker lands in E2T4."
+              "reply_markup": {
+                "inline_keyboard": [
+                  [{ "text": "No reminder", "callback_data": "remind:no" }],
+                  [{ "text": "Set time ⏰", "callback_data": "remind:set" }]
+                ]
+              }
             }
           }
         ]

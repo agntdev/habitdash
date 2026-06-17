@@ -33,7 +33,7 @@ export interface Session {
 }
 
 /** Discrete steps of the /add flow. Each later task advances the step. */
-export type AddStep = "awaiting_name" | "awaiting_frequency" | "awaiting_days" | "awaiting_reminder" | "awaiting_confirm";
+export type AddStep = "awaiting_name" | "awaiting_frequency" | "awaiting_days" | "awaiting_reminder" | "awaiting_custom_time" | "awaiting_confirm";
 
 /** Per-chat draft of the habit being assembled by the /add flow. */
 export interface HabitDraft {
@@ -69,6 +69,12 @@ const CB = {
   DAY: "day",
   /** E2T3 day picker Done. */
   DAYS_DONE: "days:done",
+  /** E2T4 reminder decision. */
+  REMIND_NO: "remind:no",
+  REMIND_SET: "remind:set",
+  /** E2T4 quick time. `time:<HH:MM>`. */
+  TIME: "time",
+  REMIND_CUSTOM: "remind:custom",
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -212,6 +218,22 @@ function dayPicker(bitmask: number) {
     [row(1), row(2), row(3), row(4)], // Mon Tue Wed Thu
     [row(5), row(6), row(0)],         // Fri Sat Sun
     [inlineButton("Done ✓", CB.DAYS_DONE)],
+  ]);
+}
+
+/** E2T4: [No reminder] [Set time]. */
+function reminderDecision() {
+  return inlineKeyboard([
+    [inlineButton("No reminder", CB.REMIND_NO)],
+    [inlineButton("Set time ⏰", CB.REMIND_SET)],
+  ]);
+}
+
+/** E2T4: 3 quick times + Custom. */
+function quickTimePicker() {
+  return inlineKeyboard([
+    [inlineButton("08:00", `${CB.TIME}:08:00`), inlineButton("12:00", `${CB.TIME}:12:00`)],
+    [inlineButton("18:00", `${CB.TIME}:18:00`), inlineButton("Custom…", CB.REMIND_CUSTOM)],
   ]);
 }
 
@@ -467,8 +489,8 @@ export function buildBot(token: string, opts: BuildBotOptions = {}) {
         ctx.session.addStep = "awaiting_reminder";
         await ctx.reply(
           `✅ Frequency: *${choice === "daily" ? "Daily" : "Weekdays (Mon–Fri)"}*.\n\n` +
-            "Step 3 of 4 — pick a reminder time. " +
-            "The [No reminder] / [Set time] picker lands in E2T4.",
+            "Step 3 of 4 — pick a reminder time:",
+          { reply_markup: reminderDecision() },
         );
       }
       return;
@@ -485,8 +507,53 @@ export function buildBot(token: string, opts: BuildBotOptions = {}) {
       ctx.session.addStep = "awaiting_reminder";
       await ctx.reply(
         `✅ Days: ${DAY_LABELS.filter((_, i) => (mask & (1 << i)) !== 0).join(", ")}.\n\n` +
-          "Step 3 of 4 — pick a reminder time. " +
-          "The [No reminder] / [Set time] picker lands in E2T4.",
+          "Step 3 of 4 — pick a reminder time:",
+        { reply_markup: reminderDecision() },
+      );
+      return;
+    }
+    // E2T4: reminder decision + quick time / custom.
+    if (data === CB.REMIND_NO) {
+      ctx.session.draft = { ...(ctx.session.draft ?? {}), reminderTime: undefined };
+      ctx.session.addStep = "awaiting_confirm";
+      await ctx.answerCallbackQuery();
+      await ctx.reply(
+        "✅ Reminder: *none*.\n\n" +
+          "Step 4 of 4 — ready to confirm. " +
+          "The [Confirm] / [Cancel] step lands in E2T5.",
+      );
+      return;
+    }
+    if (data === CB.REMIND_SET) {
+      ctx.session.addStep = "awaiting_reminder"; // still awaiting_reminder, just sub-screen
+      await ctx.answerCallbackQuery();
+      await ctx.reply(
+        "⏰ Pick a quick time, or *Custom* for HH:MM:",
+        { reply_markup: quickTimePicker() },
+      );
+      return;
+    }
+    if (data === CB.REMIND_CUSTOM) {
+      ctx.session.addStep = "awaiting_custom_time";
+      await ctx.answerCallbackQuery();
+      await ctx.reply(
+        "⏰ Type a reminder time in *HH:MM* 24h format (e.g. `07:30`, `21:15`).",
+      );
+      return;
+    }
+    if (data.startsWith(`${CB.TIME}:`)) {
+      const t = data.slice(CB.TIME.length + 1);
+      if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(t)) {
+        await ctx.answerCallbackQuery({ text: "Bad time." });
+        return;
+      }
+      ctx.session.draft = { ...(ctx.session.draft ?? {}), reminderTime: t };
+      ctx.session.addStep = "awaiting_confirm";
+      await ctx.answerCallbackQuery();
+      await ctx.reply(
+        `✅ Reminder: *${t}*.\n\n` +
+          "Step 4 of 4 — ready to confirm. " +
+          "The [Confirm] / [Cancel] step lands in E2T5.",
       );
       return;
     }
@@ -544,6 +611,25 @@ export function buildBot(token: string, opts: BuildBotOptions = {}) {
       if (name.length > 0) {
         createHabit(db, ctx.session.user.id, name);
         await ctx.reply(`__seed_ok__:${name}`);
+      }
+      return;
+    }
+
+    // E2T4: custom HH:MM input.
+    if (ctx.session.addStep === "awaiting_custom_time") {
+      if (/^([01]\d|2[0-3]):[0-5]\d$/.test(text.trim())) {
+        const t = text.trim();
+        ctx.session.draft = { ...(ctx.session.draft ?? {}), reminderTime: t };
+        ctx.session.addStep = "awaiting_confirm";
+        await ctx.reply(
+          `✅ Reminder: *${t}*.\n\n` +
+            "Step 4 of 4 — ready to confirm. " +
+            "The [Confirm] / [Cancel] step lands in E2T5.",
+        );
+      } else {
+        await ctx.reply(
+          "⏰ That doesn't look like HH:MM. Try again (e.g. `07:30`, `21:15`).",
+        );
       }
       return;
     }
