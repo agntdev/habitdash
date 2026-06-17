@@ -1,0 +1,84 @@
+[
+  {
+    "name": "group chat /start is rejected with the private-chats-only message",
+    "steps": [
+      {
+        "send": {
+          "update": {
+            "update_id": 1,
+            "message": {
+              "message_id": 1,
+              "date": 0,
+              "chat": { "id": -1001, "type": "supergroup", "title": "Test Group" },
+              "from": { "id": 99, "is_bot": false, "first_name": "Alice" },
+              "text": "/start",
+              "entities": [{ "type": "bot_command", "offset": 0, "length": 6 }]
+            }
+          }
+        },
+        "expect": [
+          {
+            "method": "sendMessage",
+            "payload": {
+              "text": "This bot works in private chats only. Start a private chat with me."
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "group chat /help is rejected too (all commands blocked)",
+    "steps": [
+      {
+        "send": {
+          "update": {
+            "update_id": 1,
+            "message": {
+              "message_id": 1,
+              "date": 0,
+              "chat": { "id": -1001, "type": "group", "title": "Old Group" },
+              "from": { "id": 99, "is_bot": false, "first_name": "Alice" },
+              "text": "/help",
+              "entities": [{ "type": "bot_command", "offset": 0, "length": 5 }]
+            }
+          }
+        },
+        "expect": [
+          {
+            "method": "sendMessage",
+            "payload": {
+              "text": "This bot works in private chats only. Start a private chat with me."
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "channel post is also rejected",
+    "steps": [
+      {
+        "send": {
+          "update": {
+            "update_id": 1,
+            "channel_post": {
+              "message_id": 1,
+              "date": 0,
+              "chat": { "id": -1002, "type": "channel", "title": "Test Channel" },
+              "text": "/start"
+            }
+          }
+        },
+        "expect": [
+          {
+            "method": "sendMessage",
+            "payload": {
+              "text": "This bot works in private chats only. Start a private chat with me."
+            }
+          }
+        ]
+      }
+    ]
+  }
+]

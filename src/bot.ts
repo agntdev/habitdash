@@ -85,6 +85,20 @@ export function buildBot(token: string) {
     initial: () => ({}),
   });
 
+  // Private-chat guard (E6T1). HabitDash is a 1:1 habit tracker — it must
+  // never carry state for groups/channels. Registered first so every
+  // downstream command/handler is skipped for non-private chats; we reply
+  // once with the user-facing message and stop the middleware chain.
+  bot.use(async (ctx, next) => {
+    if (ctx.chat?.type !== "private") {
+      await ctx.reply(
+        "This bot works in private chats only. Start a private chat with me.",
+      );
+      return;
+    }
+    await next();
+  });
+
   // /start — welcome + main menu (T02). The full dashboard (habit list with
   // ✓ Done buttons + Add/Stats/List row) is wired in E1T1; this PR ships the
   // menu surface that those features will hang off of.
