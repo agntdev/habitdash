@@ -63,6 +63,8 @@ const CB = {
   DASH_LIST: "dash:list",
   /** Per-habit ✓ Done. `done:<habit_id>`. */
   DONE: "done",
+  /** E2T2 frequency picker. `freq:<daily|weekdays|specific_days>`. */
+  FREQ: "freq",
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -180,6 +182,17 @@ function dashboardKeyboard(habits: readonly HabitRow[]): ReturnType<typeof inlin
 
 function backToDashboard() {
   return inlineKeyboard([[inlineButton("« Back to dashboard", CB.MENU_BACK)]]);
+}
+
+/** E2T2: three buttons, one per frequency choice. */
+function frequencyPicker() {
+  return inlineKeyboard([
+    [
+      inlineButton("Daily", `${CB.FREQ}:daily`),
+      inlineButton("Weekdays", `${CB.FREQ}:weekdays`),
+    ],
+    [inlineButton("Specific days", `${CB.FREQ}:specific_days`)],
+  ]);
 }
 
 function mainMenu() {
@@ -413,6 +426,32 @@ export function buildBot(token: string, opts: BuildBotOptions = {}) {
       return;
     }
 
+    // E2T2: frequency picker callbacks.
+    if (data.startsWith(`${CB.FREQ}:`)) {
+      const choice = data.slice(CB.FREQ.length + 1);
+      if (choice !== "daily" && choice !== "weekdays" && choice !== "specific_days") {
+        await ctx.answerCallbackQuery({ text: "Unknown frequency." });
+        return;
+      }
+      ctx.session.draft = { ...(ctx.session.draft ?? {}), frequencyType: choice };
+      if (choice === "specific_days") {
+        ctx.session.addStep = "awaiting_days";
+        await ctx.reply(
+          "✅ Frequency: *Specific days*.\n\n" +
+            "Step 3 of 4 — pick the weekdays. " +
+            "The Mon..Sun toggle lands in E2T3.",
+        );
+      } else {
+        ctx.session.addStep = "awaiting_reminder";
+        await ctx.reply(
+          `✅ Frequency: *${choice === "daily" ? "Daily" : "Weekdays (Mon–Fri)"}*.\n\n` +
+            "Step 3 of 4 — pick a reminder time. " +
+            "The [No reminder] / [Set time] picker lands in E2T4.",
+        );
+      }
+      return;
+    }
+
     // Feature cards (Add / List / Stats / Help). T02 menu buttons and the
     // dashboard's bottom row both end up here.
     const text = FEATURE_CARDS[data];
@@ -463,10 +502,11 @@ export function buildBot(token: string, opts: BuildBotOptions = {}) {
       }
       ctx.session.draft = { ...(ctx.session.draft ?? {}), name };
       ctx.session.addStep = "awaiting_frequency";
+      // E2T2: reply with the frequency picker.
       await ctx.reply(
         `✅ Captured: *${name}*\n\n` +
-          "Step 2 of 4 — pick a frequency. " +
-          "The Daily / Weekdays / Specific-days picker lands in E2T2.",
+          "Step 2 of 4 — pick a frequency:",
+        { reply_markup: frequencyPicker() },
       );
       return;
     }
