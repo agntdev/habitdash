@@ -214,3 +214,83 @@ export function listHabitsByUserId(
     )
     .all(userId);
 }
+
+/** ISO 8601 date (YYYY-MM-DD) for the current instant in the given IANA
+ *  timezone (defaults to UTC). Used by /stats to bucket completions by day
+ *  in the user's local frame. */
+export function todayIsoIn(tz: string | null, now: Date = new Date()): string {
+  // en-CA gives YYYY-MM-DD ordering reliably across Node versions.
+  try {
+    return new Intl.DateTimeFormat("en-CA", {
+      timeZone: tz ?? "UTC",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(now);
+  } catch {
+    return now.toISOString().slice(0, 10);
+  }
+}
+
+/** Count habits that have a completion row for `dateIso` (default: today UTC). */
+export function countHabitsCompletedOn(
+  db: DatabaseType,
+  userId: number,
+  dateIso: string,
+): number {
+  const row = db
+    .prepare<[number, string], { n: number }>(
+      `SELECT COUNT(DISTINCT h.id) AS n
+         FROM habits h
+         JOIN completions c ON c.habit_id = h.id
+         WHERE h.user_id = ? AND c.date = ?`,
+    )
+    .get(userId, dateIso);
+  return row?.n ?? 0;
+}
+
+/** Longest consecutive-day run of completions for any habit owned by the
+ *  user. Returns 0 when the user has no habits or no completions. */
+export function longestStreakForUser(
+  db: DatabaseType,
+  userId: number,
+): number {
+  const dates = db
+    .prepare<[number], { date: string }>(
+      `SELECT DISTINCT c.date AS date
+         FROM completions c
+         JOIN habits h ON h.id = c.habit_id
+         WHERE h.user_id = ?
+         ORDER BY c.date ASC`,
+    )
+    .all(userId)
+    .map((r) => r.date);
+  if (dates.length === 0) return 0;
+
+  let best = 1;
+  let run = 1;
+  for (let i = 1; i < dates.length; i++) {
+    if (isNextDay(dates[i - 1], dates[i])) {
+      run += 1;
+      if (run > best) best = run;
+    } else {
+      run = 1;
+    }
+  }
+  return best;
+}
+
+function isNextDay(prev: string, cur: string): boolean {
+  // Cheap ISO-day check using Date math (avoids a date-fns dependency).
+  const a = Date.UTC(
+    Number(prev.slice(0, 4)),
+    Number(prev.slice(5, 7)) - 1,
+    Number(prev.slice(8, 10)),
+  );
+  const b = Date.UTC(
+    Number(cur.slice(0, 4)),
+    Number(cur.slice(5, 7)) - 1,
+    Number(cur.slice(8, 10)),
+  );
+  return (b - a) / 86_400_000 === 1;
+}

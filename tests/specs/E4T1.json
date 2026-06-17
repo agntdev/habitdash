@@ -1,0 +1,43 @@
+[
+  {
+    "name": "/stats for a brand-new user shows the empty-state stats",
+    "steps": [
+      { "send": { "text": "/start", "userId": 1, "chatId": 100 }, "expect": [{ "method": "sendMessage" }] },
+      {
+        "send": { "text": "/stats", "userId": 1, "chatId": 100 },
+        "expect": [
+          {
+            "method": "sendMessage",
+            "payload": {
+              "text": "📊 *Stats*\n\n🌱 _No habits yet — add one with /add to start tracking._\n🔥 _Longest streak (any habit): 0 days_",
+              "reply_markup": {
+                "inline_keyboard": [
+                  [{ "text": "« Back to dashboard", "callback_data": "menu:back" }]
+                ]
+              }
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "tapping [Back to dashboard] from /stats returns to the dashboard",
+    "steps": [
+      { "send": { "text": "/start", "userId": 2, "chatId": 200 }, "expect": [{ "method": "sendMessage" }] },
+      { "send": { "text": "/stats", "userId": 2, "chatId": 200 }, "expect": [{ "method": "sendMessage" }] },
+      {
+        "send": { "callback": "menu:back", "userId": 2, "chatId": 200, "messageId": 1 },
+        "expect": [
+          { "method": "answerCallbackQuery" },
+          {
+            "method": "editMessageText",
+            "payload": {
+              "text": "📊 *Your habits*\n\n🌱 _No habits yet — tap ➕ below to add your first one._"
+            }
+          }
+        ]
+      }
+    ]
+  }
+]
