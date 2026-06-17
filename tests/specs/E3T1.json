@@ -1,0 +1,64 @@
+[
+  {
+    "name": "/check for a brand-new user nudges to /add",
+    "steps": [
+      { "send": { "text": "/start", "userId": 1, "chatId": 100 }, "expect": [{ "method": "sendMessage" }] },
+      {
+        "send": { "text": "/check", "userId": 1, "chatId": 100 },
+        "expect": [
+          {
+            "method": "sendMessage",
+            "payload": { "text": "🌱 _No habits yet — use /add to create your first one._" }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "tapping ✓ Done on the dashboard inserts a completion and refreshes the dashboard",
+    "steps": [
+      { "send": { "text": "/start", "userId": 2, "chatId": 200 }, "expect": [{ "method": "sendMessage" }] },
+      { "send": { "text": "__seed_habit: Drink water", "userId": 2, "chatId": 200 }, "expect": [{ "method": "sendMessage" }] },
+      { "send": { "text": "/start", "userId": 2, "chatId": 200 }, "expect": [{ "method": "sendMessage" }] },
+      {
+        "send": { "callback": "done:1", "userId": 2, "chatId": 200, "messageId": 1 },
+        "expect": [
+          { "method": "answerCallbackQuery" },
+          { "method": "editMessageText" }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "tapping ✓ Done twice on the same day is idempotent (no duplicate row)",
+    "steps": [
+      { "send": { "text": "/start", "userId": 3, "chatId": 300 }, "expect": [{ "method": "sendMessage" }] },
+      { "send": { "text": "__seed_habit: Read 10 pages", "userId": 3, "chatId": 300 }, "expect": [{ "method": "sendMessage" }] },
+      { "send": { "text": "/start", "userId": 3, "chatId": 300 }, "expect": [{ "method": "sendMessage" }] },
+      { "send": { "callback": "done:1", "userId": 3, "chatId": 300, "messageId": 1 }, "expect": [{ "method": "answerCallbackQuery" }, { "method": "editMessageText" }] },
+      {
+        "send": { "callback": "done:1", "userId": 3, "chatId": 300, "messageId": 1 },
+        "expect": [
+          { "method": "answerCallbackQuery" },
+          { "method": "editMessageText" }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "/check marks the first habit for today",
+    "steps": [
+      { "send": { "text": "/start", "userId": 4, "chatId": 400 }, "expect": [{ "method": "sendMessage" }] },
+      { "send": { "text": "__seed_habit: Meditate", "userId": 4, "chatId": 400 }, "expect": [{ "method": "sendMessage" }] },
+      {
+        "send": { "text": "/check", "userId": 4, "chatId": 400 },
+        "expect": [
+          {
+            "method": "sendMessage",
+            "payload": { "text": "✅ Marked: *Meditate* for today." }
+          }
+        ]
+      }
+    ]
+  }
+]
