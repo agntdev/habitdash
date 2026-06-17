@@ -4,9 +4,12 @@ import { inlineButton, inlineKeyboard } from "./toolkit/ui/keyboard.js";
 import {
   type HabitRow,
   type UserRow,
+  countHabitsCompletedOn,
   getOrCreateUser,
   listHabitsByUserId,
+  longestStreakForUser,
   setLastDashboardMessageId,
+  todayIsoIn,
 } from "./db.js";
 
 // The per-chat session shape (ephemeral conversation state only). Extend as the
@@ -248,6 +251,36 @@ export function buildBot(token: string, opts: BuildBotOptions = {}) {
   // /help — list every command the bot currently understands.
   bot.command("help", async (ctx) => {
     await ctx.reply(HELP_TEXT);
+  });
+
+  // /stats (E4T1) — today's progress + longest streak across all habits.
+  // Composes a single message with a [Back to dashboard] button so the user
+  // returns to the E1T1 dashboard in one tap.
+  bot.command("stats", async (ctx) => {
+    if (!db || !ctx.from) {
+      await ctx.reply(
+        "📊 *Stats*\n\n_The data layer isn't wired here — stats land once the DB is connected._",
+        { reply_markup: backToDashboard() },
+      );
+      return;
+    }
+    const user = ctx.session.user ?? getOrCreateUser(db, ctx.from.id, ctx.chat!.id);
+    ctx.session.user = user;
+    const habits = listHabitsByUserId(db, user.id);
+    const today = todayIsoIn(user.timezone);
+    const done = countHabitsCompletedOn(db, user.id, today);
+    const longest = longestStreakForUser(db, user.id);
+    const total = habits.length;
+
+    const body =
+      habits.length === 0
+        ? "🌱 _No habits yet — add one with /add to start tracking._"
+        : `✅ _Today: ${done} of ${total} completed_`;
+
+    await ctx.reply(
+      `📊 *Stats*\n\n${body}\n🔥 _Longest streak (any habit): ${longest} day${longest === 1 ? "" : "s"}_`,
+      { reply_markup: backToDashboard() },
+    );
   });
 
   // Callback query catch-all: route menu/dashboard taps, with the E5T3
