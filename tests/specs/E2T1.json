@@ -17,7 +17,7 @@
     ]
   },
   {
-    "name": "typing a name captures it and advances to step 2",
+    "name": "typing a name captures it and shows the frequency picker (E2T2)",
     "steps": [
       { "send": { "text": "/start", "userId": 2, "chatId": 200 }, "expect": [{ "method": "sendMessage" }] },
       { "send": { "text": "/add", "userId": 2, "chatId": 200 }, "expect": [{ "method": "sendMessage" }] },
@@ -27,7 +27,18 @@
           {
             "method": "sendMessage",
             "payload": {
-              "text": "✅ Captured: *Drink water*\n\nStep 2 of 4 — pick a frequency. The Daily / Weekdays / Specific-days picker lands in E2T2."
+              "text": "✅ Captured: *Drink water*\n\nStep 2 of 4 — pick a frequency:",
+              "reply_markup": {
+                "inline_keyboard": [
+                  [
+                    { "text": "Daily", "callback_data": "freq:daily" },
+                    { "text": "Weekdays", "callback_data": "freq:weekdays" }
+                  ],
+                  [
+                    { "text": "Specific days", "callback_data": "freq:specific_days" }
+                  ]
+                ]
+              }
             }
           }
         ]
