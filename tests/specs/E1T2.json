@@ -1,0 +1,56 @@
+[
+  {
+    "name": "/list with no habits sends the empty-state dashboard",
+    "steps": [
+      { "send": { "text": "/start", "userId": 1, "chatId": 100 }, "expect": [{ "method": "sendMessage" }] },
+      {
+        "send": { "text": "/list", "userId": 1, "chatId": 100 },
+        "expect": [
+          {
+            "method": "sendMessage",
+            "payload": {
+              "text": "📊 *Your habits*\n\n🌱 _No habits yet — tap ➕ below to add your first one._"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "/list re-renders the dashboard with the habit row + streak",
+    "steps": [
+      { "send": { "text": "/start", "userId": 2, "chatId": 200 }, "expect": [{ "method": "sendMessage" }] },
+      { "send": { "text": "__seed_habit: Drink water", "userId": 2, "chatId": 200 }, "expect": [{ "method": "sendMessage" }] },
+      {
+        "send": { "text": "/list", "userId": 2, "chatId": 200 },
+        "expect": [
+          {
+            "method": "sendMessage",
+            "payload": {
+              "text": "📊 *Your habits*\n\n1. *Drink water* — streak: 0"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "marking a habit done then /list shows streak: 1",
+    "steps": [
+      { "send": { "text": "/start", "userId": 3, "chatId": 300 }, "expect": [{ "method": "sendMessage" }] },
+      { "send": { "text": "__seed_habit: Meditate", "userId": 3, "chatId": 300 }, "expect": [{ "method": "sendMessage" }] },
+      { "send": { "text": "/check", "userId": 3, "chatId": 300 }, "expect": [{ "method": "sendMessage" }] },
+      {
+        "send": { "text": "/list", "userId": 3, "chatId": 300 },
+        "expect": [
+          {
+            "method": "sendMessage",
+            "payload": {
+              "text": "📊 *Your habits*\n\n1. *Meditate* — streak: 1"
+            }
+          }
+        ]
+      }
+    ]
+  }
+]
