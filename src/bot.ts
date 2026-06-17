@@ -18,8 +18,16 @@ export function buildBot(token: string) {
     initial: () => ({}),
   });
 
+  // /start — HabitDash entry point. The full dashboard (habit list with
+  // ✓ Done buttons + Add/Stats/List row) is wired in E1T1; for now we
+  // greet the user and point them at the upcoming commands so the bot is
+  // verifiably alive and on-brand.
   bot.command("start", async (ctx) => {
-    await ctx.reply("Welcome! I am ready to help.");
+    await ctx.reply(
+      "Welcome to HabitDash — your private habit tracker. " +
+        "Use /add to create a habit, /list to see them, /check to mark one done, " +
+        "or /help for the full command list.",
+    );
   });
 
   return bot;
