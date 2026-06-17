@@ -1,22 +1,14 @@
 [
   {
-    "name": "/start sends the HabitDash welcome with the main menu",
+    "name": "/start sends the empty-state dashboard for a new user",
     "steps": [
       {
-        "send": { "text": "/start" },
+        "send": { "text": "/start", "userId": 1, "chatId": 100 },
         "expect": [
           {
             "method": "sendMessage",
             "payload": {
-              "text": "👋 Welcome to HabitDash — your private habit tracker.\n\nPick a feature to see what it does, or send a command directly.",
-              "reply_markup": {
-                "inline_keyboard": [
-                  [{ "text": "➕ Add habit", "callback_data": "menu:add" }],
-                  [{ "text": "📋 My habits", "callback_data": "menu:list" }],
-                  [{ "text": "📊 Stats", "callback_data": "menu:stats" }],
-                  [{ "text": "❓ Help", "callback_data": "menu:help" }]
-                ]
-              }
+              "text": "📊 *Your habits*\n\n🌱 _No habits yet — tap ➕ below to add your first one._"
             }
           }
         ]

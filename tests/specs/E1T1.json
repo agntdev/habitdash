@@ -1,0 +1,108 @@
+[
+  {
+    "name": "/start persists the user (idempotent) on every call",
+    "steps": [
+      {
+        "send": { "text": "/start", "userId": 42, "chatId": 4242 },
+        "expect": [
+          { "method": "sendMessage" }
+        ]
+      },
+      {
+        "send": { "text": "/start", "userId": 42, "chatId": 4242 },
+        "expect": [
+          { "method": "sendMessage" }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "dashboard empty state shows the ➕ Add / Stats / List bottom row",
+    "steps": [
+      {
+        "send": { "text": "/start", "userId": 5, "chatId": 55 },
+        "expect": [
+          {
+            "method": "sendMessage",
+            "payload": {
+              "reply_markup": {
+                "inline_keyboard": [
+                  [
+                    { "text": "➕ Add", "callback_data": "dash:add" },
+                    { "text": "📊 Stats", "callback_data": "dash:stats" },
+                    { "text": "📋 List", "callback_data": "dash:list" }
+                  ]
+                ]
+              }
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "dashboard Add button edits to the Add habit feature card",
+    "steps": [
+      { "send": { "text": "/start", "userId": 6, "chatId": 66 }, "expect": [{ "method": "sendMessage" }] },
+      {
+        "send": { "callback": "dash:add", "userId": 6, "chatId": 66, "messageId": 1 },
+        "expect": [
+          { "method": "answerCallbackQuery" },
+          {
+            "method": "editMessageText",
+            "payload": {
+              "text": "➕ *Add habit*\n\nThe full add flow lands in E2T1. For now, the button opens this description card so the navigation is never broken.",
+              "reply_markup": {
+                "inline_keyboard": [
+                  [{ "text": "« Back to dashboard", "callback_data": "menu:back" }]
+                ]
+              }
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "dashboard Stats and List buttons edit to their feature cards",
+    "steps": [
+      { "send": { "text": "/start", "userId": 7, "chatId": 77 }, "expect": [{ "method": "sendMessage" }] },
+      {
+        "send": { "callback": "dash:stats", "userId": 7, "chatId": 77, "messageId": 1 },
+        "expect": [
+          { "method": "answerCallbackQuery" },
+          { "method": "editMessageText" }
+        ]
+      },
+      {
+        "send": { "callback": "menu:back", "userId": 7, "chatId": 77, "messageId": 1 },
+        "expect": [
+          { "method": "answerCallbackQuery" },
+          { "method": "editMessageText" }
+        ]
+      },
+      {
+        "send": { "callback": "dash:list", "userId": 7, "chatId": 77, "messageId": 1 },
+        "expect": [
+          { "method": "answerCallbackQuery" },
+          { "method": "editMessageText" }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "✓ Done button answers with a toast (full check lands in E3T1)",
+    "steps": [
+      { "send": { "text": "/start", "userId": 8, "chatId": 88 }, "expect": [{ "method": "sendMessage" }] },
+      {
+        "send": { "callback": "done:1", "userId": 8, "chatId": 88, "messageId": 1 },
+        "expect": [
+          {
+            "method": "answerCallbackQuery",
+            "payload": { "text": "Done! ✅" }
+          }
+        ]
+      }
+    ]
+  }
+]

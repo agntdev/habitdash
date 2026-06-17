@@ -16,5 +16,5 @@ const db = openDb(dbPath);
 const version = runMigrations(db);
 console.error(`[habitdash] db ready at ${dbPath} (schema v${version})`);
 
-const bot = buildBot(token);
+const bot = buildBot(token, { db });
 bot.start();

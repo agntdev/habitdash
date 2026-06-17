@@ -142,3 +142,75 @@ function writeSchemaVersion(db: DatabaseType, version: number, label: string): v
       "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
   ).run(label);
 }
+
+// ---------------------------------------------------------------------------
+// Domain types + accessors
+// ---------------------------------------------------------------------------
+
+/** Shape of a row in the `users` table. */
+export interface UserRow {
+  id: number;
+  telegram_id: number;
+  chat_id: number;
+  timezone: string | null;
+  last_dashboard_message_id: number | null;
+  created_at: string;
+}
+
+/** Shape of a row in the `habits` table. */
+export interface HabitRow {
+  id: number;
+  user_id: number;
+  name: string;
+  /** "daily" | "weekdays" | "specific_days" */
+  frequency_type: string;
+  /** Bitmask 0=Sun..6=Sat when frequency_type === "specific_days", else null. */
+  frequency_days: number | null;
+  /** "HH:MM" or null. */
+  reminder_time: string | null;
+  created_at: string;
+}
+
+/** Look up a user by Telegram id, creating the row on first contact. */
+export function getOrCreateUser(
+  db: DatabaseType,
+  telegramId: number,
+  chatId: number,
+): UserRow {
+  const existing = db
+    .prepare<[number], UserRow>(
+      "SELECT * FROM users WHERE telegram_id = ?",
+    )
+    .get(telegramId);
+  if (existing) return existing;
+  db.prepare(
+    "INSERT INTO users (telegram_id, chat_id) VALUES (?, ?)",
+  ).run(telegramId, chatId);
+  // INSERT changed rowcount; re-read so the caller gets the auto id.
+  return db
+    .prepare<[number], UserRow>("SELECT * FROM users WHERE telegram_id = ?")
+    .get(telegramId) as UserRow;
+}
+
+/** Persist the id of the most recently rendered dashboard message for a user. */
+export function setLastDashboardMessageId(
+  db: DatabaseType,
+  userId: number,
+  messageId: number,
+): void {
+  db.prepare(
+    "UPDATE users SET last_dashboard_message_id = ? WHERE id = ?",
+  ).run(messageId, userId);
+}
+
+/** All habits for a user, ordered by creation time. */
+export function listHabitsByUserId(
+  db: DatabaseType,
+  userId: number,
+): HabitRow[] {
+  return db
+    .prepare<[number], HabitRow>(
+      "SELECT * FROM habits WHERE user_id = ? ORDER BY created_at ASC, id ASC",
+    )
+    .all(userId);
+}
