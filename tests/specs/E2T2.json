@@ -52,7 +52,7 @@
           {
             "method": "sendMessage",
             "payload": {
-              "text": "✅ Frequency: *Specific days*.\n\nStep 3 of 4 — pick the weekdays. The Mon..Sun toggle lands in E2T3."
+              "text": "✅ Frequency: *Specific days*.\n\nStep 3 of 4 — pick the weekdays (toggle, then tap *Done*):"
             }
           }
         ]
