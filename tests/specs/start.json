@@ -1,11 +1,16 @@
 [
   {
-    "name": "/start replies with a welcome",
+    "name": "/start replies with a HabitDash welcome",
     "steps": [
       {
         "send": { "text": "/start" },
         "expect": [
-          { "method": "sendMessage", "payload": { "text": "Welcome! I am ready to help." } }
+          {
+            "method": "sendMessage",
+            "payload": {
+              "text": "Welcome to HabitDash — your private habit tracker. Use /add to create a habit, /list to see them, /check to mark one done, or /help for the full command list."
+            }
+          }
         ]
       }
     ]
