@@ -1,0 +1,106 @@
+[
+  {
+    "name": "menu:add tap edits the menu in place with the Add habit card",
+    "steps": [
+      { "send": { "text": "/start" }, "expect": [{ "method": "sendMessage" }] },
+      {
+        "send": { "callback": "menu:add" },
+        "expect": [
+          { "method": "answerCallbackQuery" },
+          {
+            "method": "editMessageText",
+            "payload": {
+              "text": "➕ *Add habit*\n\nCreate a new habit to track. You'll set a name, a frequency (daily, weekdays, or specific days), and an optional reminder time.",
+              "reply_markup": {
+                "inline_keyboard": [
+                  [{ "text": "« Back to menu", "callback_data": "menu:back" }]
+                ]
+              }
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "menu:list tap edits the menu with the My habits card",
+    "steps": [
+      { "send": { "text": "/start" }, "expect": [{ "method": "sendMessage" }] },
+      {
+        "send": { "callback": "menu:list" },
+        "expect": [
+          { "method": "answerCallbackQuery" },
+          {
+            "method": "editMessageText",
+            "payload": {
+              "reply_markup": {
+                "inline_keyboard": [
+                  [{ "text": "« Back to menu", "callback_data": "menu:back" }]
+                ]
+              }
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "menu:stats tap edits the menu with the Stats card",
+    "steps": [
+      { "send": { "text": "/start" }, "expect": [{ "method": "sendMessage" }] },
+      {
+        "send": { "callback": "menu:stats" },
+        "expect": [
+          { "method": "answerCallbackQuery" },
+          { "method": "editMessageText" }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "menu:help tap edits the menu with the Help card",
+    "steps": [
+      { "send": { "text": "/start" }, "expect": [{ "method": "sendMessage" }] },
+      {
+        "send": { "callback": "menu:help" },
+        "expect": [
+          { "method": "answerCallbackQuery" },
+          { "method": "editMessageText" }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "menu:back tap restores the main menu in place",
+    "steps": [
+      { "send": { "text": "/start" }, "expect": [{ "method": "sendMessage" }] },
+      {
+        "send": { "callback": "menu:add" },
+        "expect": [
+          { "method": "answerCallbackQuery" },
+          { "method": "editMessageText" }
+        ]
+      },
+      {
+        "send": { "callback": "menu:back" },
+        "expect": [
+          { "method": "answerCallbackQuery" },
+          {
+            "method": "editMessageText",
+            "payload": {
+              "text": "👋 Welcome to HabitDash — your private habit tracker.\n\nPick a feature to see what it does, or send a command directly.",
+              "reply_markup": {
+                "inline_keyboard": [
+                  [{ "text": "➕ Add habit", "callback_data": "menu:add" }],
+                  [{ "text": "📋 My habits", "callback_data": "menu:list" }],
+                  [{ "text": "📊 Stats", "callback_data": "menu:stats" }],
+                  [{ "text": "❓ Help", "callback_data": "menu:help" }]
+                ]
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+]

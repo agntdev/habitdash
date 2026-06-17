@@ -1,6 +1,6 @@
 [
   {
-    "name": "/start replies with a HabitDash welcome",
+    "name": "/start sends the HabitDash welcome with the main menu",
     "steps": [
       {
         "send": { "text": "/start" },
@@ -8,7 +8,15 @@
           {
             "method": "sendMessage",
             "payload": {
-              "text": "Welcome to HabitDash — your private habit tracker. Use /add to create a habit, /list to see them, /check to mark one done, or /help for the full command list."
+              "text": "👋 Welcome to HabitDash — your private habit tracker.\n\nPick a feature to see what it does, or send a command directly.",
+              "reply_markup": {
+                "inline_keyboard": [
+                  [{ "text": "➕ Add habit", "callback_data": "menu:add" }],
+                  [{ "text": "📋 My habits", "callback_data": "menu:list" }],
+                  [{ "text": "📊 Stats", "callback_data": "menu:stats" }],
+                  [{ "text": "❓ Help", "callback_data": "menu:help" }]
+                ]
+              }
             }
           }
         ]
