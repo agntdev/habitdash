@@ -1,0 +1,114 @@
+[
+  {
+    "name": "tapping Specific days shows the day toggle picker (all days off)",
+    "steps": [
+      { "send": { "text": "/start", "userId": 1, "chatId": 100 }, "expect": [{ "method": "sendMessage" }] },
+      { "send": { "text": "/add", "userId": 1, "chatId": 100 }, "expect": [{ "method": "sendMessage" }] },
+      { "send": { "text": "Yoga", "userId": 1, "chatId": 100 }, "expect": [{ "method": "sendMessage" }] },
+      {
+        "send": { "callback": "freq:specific_days", "userId": 1, "chatId": 100, "messageId": 1 },
+        "expect": [
+          { "method": "answerCallbackQuery" },
+          {
+            "method": "sendMessage",
+            "payload": {
+              "reply_markup": {
+                "inline_keyboard": [
+                  [
+                    { "text": "Mon", "callback_data": "day:1" },
+                    { "text": "Tue", "callback_data": "day:2" },
+                    { "text": "Wed", "callback_data": "day:3" },
+                    { "text": "Thu", "callback_data": "day:4" }
+                  ],
+                  [
+                    { "text": "Fri", "callback_data": "day:5" },
+                    { "text": "Sat", "callback_data": "day:6" },
+                    { "text": "Sun", "callback_data": "day:0" }
+                  ],
+                  [{ "text": "Done ✓", "callback_data": "days:done" }]
+                ]
+              }
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "tapping a day toggles its ✓ in the keyboard",
+    "steps": [
+      { "send": { "text": "/start", "userId": 2, "chatId": 200 }, "expect": [{ "method": "sendMessage" }] },
+      { "send": { "text": "/add", "userId": 2, "chatId": 200 }, "expect": [{ "method": "sendMessage" }] },
+      { "send": { "text": "Yoga", "userId": 2, "chatId": 200 }, "expect": [{ "method": "sendMessage" }] },
+      { "send": { "callback": "freq:specific_days", "userId": 2, "chatId": 200, "messageId": 1 }, "expect": [{ "method": "answerCallbackQuery" }, { "method": "sendMessage" }] },
+      {
+        "send": { "callback": "day:1", "userId": 2, "chatId": 200, "messageId": 1 },
+        "expect": [
+          { "method": "answerCallbackQuery" },
+          {
+            "method": "editMessageReplyMarkup",
+            "payload": {
+              "reply_markup": {
+                "inline_keyboard": [
+                  [
+                    { "text": "Mon ✓", "callback_data": "day:1" },
+                    { "text": "Tue", "callback_data": "day:2" },
+                    { "text": "Wed", "callback_data": "day:3" },
+                    { "text": "Thu", "callback_data": "day:4" }
+                  ],
+                  [
+                    { "text": "Fri", "callback_data": "day:5" },
+                    { "text": "Sat", "callback_data": "day:6" },
+                    { "text": "Sun", "callback_data": "day:0" }
+                  ],
+                  [{ "text": "Done ✓", "callback_data": "days:done" }]
+                ]
+              }
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Done with no day picked is rejected with a nudge",
+    "steps": [
+      { "send": { "text": "/start", "userId": 3, "chatId": 300 }, "expect": [{ "method": "sendMessage" }] },
+      { "send": { "text": "/add", "userId": 3, "chatId": 300 }, "expect": [{ "method": "sendMessage" }] },
+      { "send": { "text": "Yoga", "userId": 3, "chatId": 300 }, "expect": [{ "method": "sendMessage" }] },
+      { "send": { "callback": "freq:specific_days", "userId": 3, "chatId": 300, "messageId": 1 }, "expect": [{ "method": "answerCallbackQuery" }, { "method": "sendMessage" }] },
+      {
+        "send": { "callback": "days:done", "userId": 3, "chatId": 300, "messageId": 1 },
+        "expect": [
+          {
+            "method": "answerCallbackQuery",
+            "payload": { "text": "Pick at least one day." }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Done with at least one day advances to the reminder step",
+    "steps": [
+      { "send": { "text": "/start", "userId": 4, "chatId": 400 }, "expect": [{ "method": "sendMessage" }] },
+      { "send": { "text": "/add", "userId": 4, "chatId": 400 }, "expect": [{ "method": "sendMessage" }] },
+      { "send": { "text": "Yoga", "userId": 4, "chatId": 400 }, "expect": [{ "method": "sendMessage" }] },
+      { "send": { "callback": "freq:specific_days", "userId": 4, "chatId": 400, "messageId": 1 }, "expect": [{ "method": "answerCallbackQuery" }, { "method": "sendMessage" }] },
+      { "send": { "callback": "day:1", "userId": 4, "chatId": 400, "messageId": 1 }, "expect": [{ "method": "answerCallbackQuery" }, { "method": "editMessageReplyMarkup" }] },
+      { "send": { "callback": "day:3", "userId": 4, "chatId": 400, "messageId": 1 }, "expect": [{ "method": "answerCallbackQuery" }, { "method": "editMessageReplyMarkup" }] },
+      {
+        "send": { "callback": "days:done", "userId": 4, "chatId": 400, "messageId": 1 },
+        "expect": [
+          { "method": "answerCallbackQuery" },
+          {
+            "method": "sendMessage",
+            "payload": {
+              "text": "✅ Days: Mon, Wed.\n\nStep 3 of 4 — pick a reminder time. The [No reminder] / [Set time] picker lands in E2T4."
+            }
+          }
+        ]
+      }
+    ]
+  }
+]

@@ -65,6 +65,10 @@ const CB = {
   DONE: "done",
   /** E2T2 frequency picker. `freq:<daily|weekdays|specific_days>`. */
   FREQ: "freq",
+  /** E2T3 day toggle. `day:<0..6>` (0=Sun..6=Sat). */
+  DAY: "day",
+  /** E2T3 day picker Done. */
+  DAYS_DONE: "days:done",
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -192,6 +196,22 @@ function frequencyPicker() {
       inlineButton("Weekdays", `${CB.FREQ}:weekdays`),
     ],
     [inlineButton("Specific days", `${CB.FREQ}:specific_days`)],
+  ]);
+}
+
+const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+/** E2T3: 7 weekday toggles (Mon..Sun row + Done). The current bitmask
+ *  drives the ✓ prefix on toggled days. */
+function dayPicker(bitmask: number) {
+  const row = (d: number) => inlineButton(
+    (bitmask & (1 << d)) ? `${DAY_LABELS[d]} ✓` : DAY_LABELS[d]!,
+    `${CB.DAY}:${d}`,
+  );
+  return inlineKeyboard([
+    [row(1), row(2), row(3), row(4)], // Mon Tue Wed Thu
+    [row(5), row(6), row(0)],         // Fri Sat Sun
+    [inlineButton("Done ✓", CB.DAYS_DONE)],
   ]);
 }
 
@@ -436,10 +456,12 @@ export function buildBot(token: string, opts: BuildBotOptions = {}) {
       ctx.session.draft = { ...(ctx.session.draft ?? {}), frequencyType: choice };
       if (choice === "specific_days") {
         ctx.session.addStep = "awaiting_days";
+        const draft = ctx.session.draft ?? {};
+        const mask = draft.frequencyDays ?? 0;
         await ctx.reply(
           "✅ Frequency: *Specific days*.\n\n" +
-            "Step 3 of 4 — pick the weekdays. " +
-            "The Mon..Sun toggle lands in E2T3.",
+            "Step 3 of 4 — pick the weekdays (toggle, then tap *Done*):",
+          { reply_markup: dayPicker(mask) },
         );
       } else {
         ctx.session.addStep = "awaiting_reminder";
@@ -448,6 +470,39 @@ export function buildBot(token: string, opts: BuildBotOptions = {}) {
             "Step 3 of 4 — pick a reminder time. " +
             "The [No reminder] / [Set time] picker lands in E2T4.",
         );
+      }
+      return;
+    }
+
+    // E2T3: day toggles + Done.
+    if (data === CB.DAYS_DONE) {
+      const draft = ctx.session.draft ?? {};
+      const mask = draft.frequencyDays ?? 0;
+      if (mask === 0) {
+        await ctx.answerCallbackQuery({ text: "Pick at least one day." });
+        return;
+      }
+      ctx.session.addStep = "awaiting_reminder";
+      await ctx.reply(
+        `✅ Days: ${DAY_LABELS.filter((_, i) => (mask & (1 << i)) !== 0).join(", ")}.\n\n` +
+          "Step 3 of 4 — pick a reminder time. " +
+          "The [No reminder] / [Set time] picker lands in E2T4.",
+      );
+      return;
+    }
+    if (data.startsWith(`${CB.DAY}:`)) {
+      const d = Number.parseInt(data.slice(CB.DAY.length + 1), 10);
+      if (!Number.isFinite(d) || d < 0 || d > 6) {
+        await ctx.answerCallbackQuery({ text: "Bad day id." });
+        return;
+      }
+      const draft = ctx.session.draft ?? {};
+      const mask = (draft.frequencyDays ?? 0) ^ (1 << d);
+      ctx.session.draft = { ...draft, frequencyDays: mask };
+      try {
+        await ctx.editMessageReplyMarkup({ reply_markup: dayPicker(mask) });
+      } catch {
+        // Best effort.
       }
       return;
     }
