@@ -19,6 +19,24 @@ export interface Session {
   /** Cached user row (id + telegram_id) for the duration of one dialog so
    *  the dashboard doesn't re-query the DB on every callback. */
   user?: UserRow;
+  /** Current step of the /add flow. `undefined` when no flow is active. */
+  addStep?: AddStep;
+  /** Habit fields the user has typed so far, persisted across messages. */
+  draft?: HabitDraft;
+}
+
+/** Discrete steps of the /add flow. Each later task advances the step. */
+export type AddStep = "awaiting_name" | "awaiting_frequency" | "awaiting_days" | "awaiting_reminder" | "awaiting_confirm";
+
+/** Per-chat draft of the habit being assembled by the /add flow. */
+export interface HabitDraft {
+  name?: string;
+  /** "daily" | "weekdays" | "specific_days" — set by E2T2. */
+  frequencyType?: "daily" | "weekdays" | "specific_days";
+  /** Bitmask 0=Sun..6=Sat — set by E2T3. */
+  frequencyDays?: number;
+  /** "HH:MM" — set by E2T4. */
+  reminderTime?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -192,9 +210,12 @@ export function buildBot(token: string, opts: BuildBotOptions = {}) {
 
   // /start — HabitDash entry point. If we have a DB handle, /start is the
   // user's dashboard (E1T1); otherwise we fall back to the T02 welcome menu
-  // so older harnesses stay green.
+  // so older harnesses stay green. /start also clears any in-flight /add
+  // draft so a stray tap of the dashboard doesn't leave stale staged data.
   bot.command("start", async (ctx) => {
     if (ctx.from) ctx.session.ownerId = ctx.from.id;
+    ctx.session.addStep = undefined;
+    ctx.session.draft = undefined;
 
     if (db && ctx.from && ctx.chat) {
       const user = getOrCreateUser(db, ctx.from.id, ctx.chat.id);
@@ -208,6 +229,20 @@ export function buildBot(token: string, opts: BuildBotOptions = {}) {
     }
 
     await ctx.reply(WELCOME, { reply_markup: mainMenu() });
+  });
+
+  // /add — start the multi-step "create a habit" flow (E2T1). The first
+  // step is a typed name; subsequent steps (frequency, days, reminder,
+  // confirm) land in E2T2–E2T5. Staging lives in ctx.session so the flow
+  // survives the gaps between user messages.
+  bot.command("add", async (ctx) => {
+    ctx.session.addStep = "awaiting_name";
+    ctx.session.draft = {};
+    await ctx.reply(
+      "📝 *Add a new habit*\n\n" +
+        "Step 1 of 4 — give your habit a name. " +
+        "Type a short, clear name (e.g. _Drink water_, _Read 10 pages_).",
+    );
   });
 
   // /help — list every command the bot currently understands.
@@ -281,9 +316,30 @@ export function buildBot(token: string, opts: BuildBotOptions = {}) {
     }
   });
 
-  // Unknown-command fallback.
+  // Unknown-command fallback + E2T1's typed-name capture.
+  // Order: if the chat is mid-/add, the typed text is the habit name and
+  // we treat it as the next step. Otherwise a leading "/" is an unknown
+  // command; any other text is ignored (HabitDash is button-driven).
   bot.on("message:text", async (ctx) => {
     const text = ctx.message.text;
+
+    // E2T1: typed habit name (only the first step is wired here).
+    if (ctx.session.addStep === "awaiting_name") {
+      const name = text.trim();
+      if (name.length === 0) {
+        await ctx.reply("Habit name can't be empty. Please type a name.");
+        return;
+      }
+      ctx.session.draft = { ...(ctx.session.draft ?? {}), name };
+      ctx.session.addStep = "awaiting_frequency";
+      await ctx.reply(
+        `✅ Captured: *${name}*\n\n` +
+          "Step 2 of 4 — pick a frequency. " +
+          "The Daily / Weekdays / Specific-days picker lands in E2T2.",
+      );
+      return;
+    }
+
     if (text.startsWith("/")) {
       const cmd = text.split(/\s+/, 1)[0] ?? text;
       await ctx.reply(`Unknown command: ${cmd}\n${UNKNOWN_COMMAND_HINT}`);

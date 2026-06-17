@@ -1,0 +1,63 @@
+[
+  {
+    "name": "/add prompts for a habit name (step 1 of 4)",
+    "steps": [
+      { "send": { "text": "/start", "userId": 1, "chatId": 100 }, "expect": [{ "method": "sendMessage" }] },
+      {
+        "send": { "text": "/add", "userId": 1, "chatId": 100 },
+        "expect": [
+          {
+            "method": "sendMessage",
+            "payload": {
+              "text": "📝 *Add a new habit*\n\nStep 1 of 4 — give your habit a name. Type a short, clear name (e.g. _Drink water_, _Read 10 pages_)."
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "typing a name captures it and advances to step 2",
+    "steps": [
+      { "send": { "text": "/start", "userId": 2, "chatId": 200 }, "expect": [{ "method": "sendMessage" }] },
+      { "send": { "text": "/add", "userId": 2, "chatId": 200 }, "expect": [{ "method": "sendMessage" }] },
+      {
+        "send": { "text": "Drink water", "userId": 2, "chatId": 200 },
+        "expect": [
+          {
+            "method": "sendMessage",
+            "payload": {
+              "text": "✅ Captured: *Drink water*\n\nStep 2 of 4 — pick a frequency. The Daily / Weekdays / Specific-days picker lands in E2T2."
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "empty name is rejected with a helpful nudge",
+    "steps": [
+      { "send": { "text": "/start", "userId": 3, "chatId": 300 }, "expect": [{ "method": "sendMessage" }] },
+      { "send": { "text": "/add", "userId": 3, "chatId": 300 }, "expect": [{ "method": "sendMessage" }] },
+      {
+        "send": { "text": "   ", "userId": 3, "chatId": 300 },
+        "expect": [
+          {
+            "method": "sendMessage",
+            "payload": { "text": "Habit name can't be empty. Please type a name." }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "stray text outside the /add flow is ignored (HabitDash is button-driven)",
+    "steps": [
+      { "send": { "text": "/start", "userId": 4, "chatId": 400 }, "expect": [{ "method": "sendMessage" }] },
+      {
+        "send": { "text": "hello there", "userId": 4, "chatId": 400 },
+        "expect": []
+      }
+    ]
+  }
+]
