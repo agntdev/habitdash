@@ -5,7 +5,9 @@ import { inlineButton, inlineKeyboard } from "./toolkit/ui/keyboard.js";
 // bot grows. Durable domain data must NOT live here — use the toolkit's
 // persistent storage (see AGENTS.md).
 export interface Session {
-  // example: step?: "awaiting_amount";
+  /** Telegram user id of whoever first interacted with this chat. Used by
+   *  E5T3 to reject callbacks from anyone else tapping the same keyboard. */
+  ownerId?: number;
 }
 
 // Callback-data constants for the /start main menu. Kept here so the menu
@@ -103,6 +105,9 @@ export function buildBot(token: string) {
   // ✓ Done buttons + Add/Stats/List row) is wired in E1T1; this PR ships the
   // menu surface that those features will hang off of.
   bot.command("start", async (ctx) => {
+    // Record the owner of this chat so E5T3 can reject callbacks from any
+    // other Telegram user that ends up tapping our keyboard.
+    if (ctx.from) ctx.session.ownerId = ctx.from.id;
     await ctx.reply(WELCOME, { reply_markup: mainMenu() });
   });
 
@@ -118,6 +123,21 @@ export function buildBot(token: string) {
   // message so the user is never left without feedback.
   bot.on("callback_query:data", async (ctx) => {
     const data = ctx.callbackQuery.data;
+    const fromId = ctx.callbackQuery.from.id;
+
+    // E5T3 — reject callbacks from a different user than the one who
+    // opened the chat. In a private chat this is effectively a no-op
+    // (only one user can chat with the bot), but the guard matters once
+    // richer per-user data lands (E2T1's add flow, E3T1's check action).
+    const ownerId = ctx.session.ownerId;
+    if (ownerId !== undefined && fromId !== ownerId) {
+      await ctx.answerCallbackQuery({
+        text: "This button isn't for you — please open your own chat with the bot.",
+        show_alert: true,
+      });
+      return;
+    }
+
     await ctx.answerCallbackQuery();
 
     if (data === CB.MENU_BACK) {
